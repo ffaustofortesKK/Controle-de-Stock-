@@ -8,26 +8,47 @@ st.set_page_config(
     page_title="Controlo de Stock e Vendas", page_icon="📊", layout="wide"
 )
 
-# Estilo CSS: Fundo rosa com padrão de flores coloridas e adaptação de texto
+# Estilo CSS personalizado: Fundo geral cor-de-rosa, abas pretas e texto todo em negrito
 st.markdown(
     """
     <style>
+    /* Fundo geral da página cor-de-rosa liso */
     .stApp {
-        background-color: #ffb6c1;
-        background-image: radial-gradient(#ff69b4 15%, transparent 16%), 
-                            radial-gradient(#ff1493 15%, transparent 16%);
-        background-size: 60px 60px;
-        background-position: 0 0, 30px 30px;
-        color: #2b2b2b;
+        background-color: #ffb6c1 !important;
     }
-    /* Estilizar blocos e caixas para legibilidade sobre o fundo */
-    div.stForm, .css-1dp5vir, .css-12oz5g7 {
-        background-color: rgba(255, 255, 255, 0.88);
-        padding: 20px;
-        border-radius: 10px;
+    
+    /* Forçar todo o texto em negrito */
+    html, body, [class*="css"], label, p, span, div, h1, h2, h3, h4, h5, h6 {
+        font-weight: bold !important;
     }
-    h1, h2, h3, h4, h5, h6, label, p {
-        color: #1a1a1a !important;
+
+    /* Estilo das abas (Tabs) com fundo preto e texto destacado */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #000000;
+        padding: 10px;
+        border-radius: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background-color: #1e1e1e !important;
+        border-radius: 5px;
+        color: #ffffff !important;
+        padding: 10px 20px;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #ff1493 !important;
+        color: #ffffff !important;
+    }
+
+    /* Caixas de formulário e contentores para legibilidade */
+    div.stForm, div[data-testid="stVerticalBlock"] > div {
+        color: #000000;
+    }
+    
+    h1, h2, h3 {
+        color: #000000 !important;
     }
     </style>
     """,
@@ -316,7 +337,6 @@ with aba_stock:
 
       btn_prod = st.form_submit_button("Salvar Produto")
       if btn_prod and n_prod:
-        # Gerar código automático com base na quantidade de linhas (001, 002, etc.)
         proximo_id = len(df_stock) + 1
         codigo_formatado = f"{proximo_id:03d}"
 
