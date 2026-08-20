@@ -175,25 +175,17 @@ with aba_venda:
         )
         data_venda = st.date_input("Data da Venda", value=datetime.date.today())
 
-        dados_prod = df_stock[df_stock["Produto"] == produto_selecionado].iloc[
-            0
-        ]
-        p_compra_padrao = float(dados_prod["Preço de Compra"])
-        p_venda_padrao = float(dados_prod["Preço de Venda"])
-
-        preco_compra = st.number_input(
-            "Preço de Compra (Unitário)", value=p_compra_padrao, format="%.2f"
-        )
-        custo_embalagem = st.number_input(
-            "Custo de Embalagem (Total)", value=0.0, format="%.2f"
-        )
-        preco_venda = st.number_input(
-            "Preço de Venda (Unitário)", value=p_venda_padrao, format="%.2f"
-        )
-
         submit = st.form_submit_button("Salvar Nova Venda")
 
         if submit:
+          # Puxa automaticamente os preços cadastrados no stock
+          dados_prod = df_stock[df_stock["Produto"] == produto_selecionado].iloc[
+              0
+          ]
+          preco_compra = float(dados_prod["Preço de Compra"])
+          preco_venda = float(dados_prod["Preço de Venda"])
+          custo_embalagem = 0.0
+
           facturacao = quantidade * preco_venda
           custo_total = (quantidade * preco_compra) + custo_embalagem
           lucro = facturacao - custo_total
@@ -259,25 +251,16 @@ with aba_venda:
                   str(row_atual["Data da Venda"]), "%Y-%m-%d"
               ).date(),
           )
-          pc_edit = st.number_input(
-              "Preço de Compra",
-              value=float(row_atual["Preço de Compra"]),
-              format="%.2f",
-          )
-          ce_edit = st.number_input(
-              "Custo de Embalagem",
-              value=float(row_atual["Custo de Embalagem"]),
-              format="%.2f",
-          )
-          pv_edit = st.number_input(
-              "Preço de Venda",
-              value=float(row_atual["Preço de Venda"]),
-              format="%.2f",
-          )
 
           btn_atualizar = st.form_submit_button("Atualizar Registo")
 
           if btn_atualizar:
+            # Puxa os preços atuais atualizados do produto selecionado
+            dados_prod_edit = df_stock[df_stock["Produto"] == prod_edit].iloc[0]
+            pc_edit = float(dados_prod_edit["Preço de Compra"])
+            pv_edit = float(dados_prod_edit["Preço de Venda"])
+            ce_edit = 0.0
+
             fact_new = q_edit * pv_edit
             custo_new = (q_edit * pc_edit) + ce_edit
             lucro_new = fact_new - custo_new
