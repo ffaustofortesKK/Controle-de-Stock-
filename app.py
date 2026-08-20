@@ -3,12 +3,12 @@ import os
 import pandas as pd
 import streamlit as st
 
-# Configuração da página
+# Configuração da página (otimizada para telemóveis e computadores)
 st.set_page_config(
-    page_title="Controlo de Stock e Vendas", page_icon="📊", layout="wide"
+    page_title="Controlo de Stock e Vendas", page_icon="📊", layout="centered"
 )
 
-# Estilo CSS personalizado: Fundo geral cor-de-rosa, abas pretas e texto todo em negrito
+# Estilo CSS personalizado: Fundo rosa, abas pretas, texto em negrito e design responsivo para telemóvel
 st.markdown(
     """
     <style>
@@ -24,9 +24,9 @@ st.markdown(
 
     /* Estilo das abas (Tabs) com fundo preto e texto destacado */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+        gap: 4px;
         background-color: #000000;
-        padding: 10px;
+        padding: 8px;
         border-radius: 8px;
     }
     
@@ -34,7 +34,8 @@ st.markdown(
         background-color: #1e1e1e !important;
         border-radius: 5px;
         color: #ffffff !important;
-        padding: 10px 20px;
+        padding: 8px 12px;
+        font-size: 13px !important;
     }
 
     .stTabs [aria-selected="true"] {
@@ -42,13 +43,16 @@ st.markdown(
         color: #ffffff !important;
     }
 
-    /* Caixas de formulário e contentores para legibilidade */
-    div.stForm, div[data-testid="stVerticalBlock"] > div {
-        color: #000000;
+    /* Otimização para telemóveis (botões e campos adaptados) */
+    .stButton button {
+        width: 100%;
+        border-radius: 8px;
+        font-weight: bold !important;
     }
     
     h1, h2, h3 {
         color: #000000 !important;
+        font-size: 1.5rem !important;
     }
     </style>
     """,
@@ -87,7 +91,7 @@ if not verificar_autenticacao():
   st.stop()
 
 
-# Carregar dados
+# Carregar dados com segurança para colunas em falta
 @st.cache_data(ttl=1)
 def carregar_dados():
   if not os.path.exists(STOCK_FILE):
@@ -101,6 +105,13 @@ def carregar_dados():
     df_stock.to_csv(STOCK_FILE, index=False)
   else:
     df_stock = pd.read_csv(STOCK_FILE)
+    if "Código" not in df_stock.columns:
+      df_stock.insert(
+          0,
+          "Código",
+          [f"{i+1:03d}" for i in range(len(df_stock))],
+      )
+      df_stock.to_csv(STOCK_FILE, index=False)
 
   if not os.path.exists(VENDAS_FILE):
     df_vendas = pd.DataFrame(columns=[
@@ -133,11 +144,11 @@ with st.sidebar:
   st.markdown("---")
 
 # Título Principal do App
-st.title("📊 Sistema de Controlo de Stock e Vendas")
+st.title("📊 Controlo de Stock e Vendas")
 
 # Criação das Abas Principais (Tabs)
 aba_venda, aba_stock, aba_historico = st.tabs(
-    ["🛒 Registar / Refazer Venda", "📦 Gerir Stock", "📋 Histórico de Vendas"]
+    ["🛒 Vendas", "📦 Stock", "📋 Histórico"]
 )
 
 # ---------------------------------------------------------
@@ -147,47 +158,38 @@ with aba_venda:
   st.subheader("Registo e Edição de Vendas")
 
   modo = st.radio(
-      "Selecione a ação:", ["Nova Venda", "Refazer / Editar Registo Anterior"],
+      "Ação:", ["Nova Venda", "Refazer / Editar Registo Anterior"],
       horizontal=True,
   )
 
   if df_stock.empty:
-    st.warning("Cadastre primeiro os produtos na aba 'Gerir Stock'.")
+    st.warning("Cadastre primeiro os produtos na aba 'Stock'.")
   else:
     if modo == "Nova Venda":
       with st.form("form_venda_novo"):
-        col1, col2 = st.columns(2)
+        produto_selecionado = st.selectbox(
+            "Produto", df_stock["Produto"].unique()
+        )
+        quantidade = st.number_input(
+            "Quantidade Vendida", min_value=1, step=1, value=1
+        )
+        data_venda = st.date_input("Data da Venda", value=datetime.date.today())
 
-        with col1:
-          produto_selecionado = st.selectbox(
-              "Produto", df_stock["Produto"].unique()
-          )
-          quantidade = st.number_input(
-              "Quantidade Vendida", min_value=1, step=1, value=1
-          )
-          data_venda = st.date_input(
-              "Data da Venda", value=datetime.date.today()
-          )
-
-        # Preços padrão do produto
         dados_prod = df_stock[df_stock["Produto"] == produto_selecionado].iloc[
             0
         ]
         p_compra_padrao = float(dados_prod["Preço de Compra"])
         p_venda_padrao = float(dados_prod["Preço de Venda"])
 
-        with col2:
-          preco_compra = st.number_input(
-              "Preço de Compra (Unitário)",
-              value=p_compra_padrao,
-              format="%.2f",
-          )
-          custo_embalagem = st.number_input(
-              "Custo de Embalagem (Total)", value=0.0, format="%.2f"
-          )
-          preco_venda = st.number_input(
-              "Preço de Venda (Unitário)", value=p_venda_padrao, format="%.2f"
-          )
+        preco_compra = st.number_input(
+            "Preço de Compra (Unitário)", value=p_compra_padrao, format="%.2f"
+        )
+        custo_embalagem = st.number_input(
+            "Custo de Embalagem (Total)", value=0.0, format="%.2f"
+        )
+        preco_venda = st.number_input(
+            "Preço de Venda (Unitário)", value=p_venda_padrao, format="%.2f"
+        )
 
         submit = st.form_submit_button("Salvar Nova Venda")
 
@@ -216,13 +218,10 @@ with aba_venda:
           st.success("Venda registada com sucesso!")
           st.rerun()
 
-    else:  # Modo Refazer / Editar Venda
+    else:
       if df_vendas.empty:
         st.info("Nenhuma venda registada para editar.")
       else:
-        st.write(
-            "Selecione uma venda abaixo para atualizar os dados (Refazer Registo):"
-        )
         df_vendas["Descricao_Edit"] = (
             df_vendas.index.astype(str)
             + " - "
@@ -240,46 +239,43 @@ with aba_venda:
         row_atual = df_vendas.loc[idx_selecionado]
 
         with st.form("form_editar_venda"):
-          col1, col2 = st.columns(2)
-          with col1:
-            q_edit = st.number_input(
-                "Quantidade Vendida",
-                min_value=1,
-                value=int(row_atual["Quantidade"]),
-            )
-            prod_edit = st.selectbox(
-                "Produto",
-                df_stock["Produto"].unique(),
-                index=list(df_stock["Produto"].unique()).index(
-                    row_atual["Produto"]
-                )
-                if row_atual["Produto"] in df_stock["Produto"].values
-                else 0,
-            )
-            data_edit = st.date_input(
-                "Data da Venda",
-                value=datetime.datetime.strptime(
-                    str(row_atual["Data da Venda"]), "%Y-%m-%d"
-                ).date(),
-            )
-          with col2:
-            pc_edit = st.number_input(
-                "Preço de Compra",
-                value=float(row_atual["Preço de Compra"]),
-                format="%.2f",
-            )
-            ce_edit = st.number_input(
-                "Custo de Embalagem",
-                value=float(row_atual["Custo de Embalagem"]),
-                format="%.2f",
-            )
-            pv_edit = st.number_input(
-                "Preço de Venda",
-                value=float(row_atual["Preço de Venda"]),
-                format="%.2f",
-            )
+          q_edit = st.number_input(
+              "Quantidade Vendida",
+              min_value=1,
+              value=int(row_atual["Quantidade"]),
+          )
+          prod_edit = st.selectbox(
+              "Produto",
+              df_stock["Produto"].unique(),
+              index=list(df_stock["Produto"].unique()).index(
+                  row_atual["Produto"]
+              )
+              if row_atual["Produto"] in df_stock["Produto"].values
+              else 0,
+          )
+          data_edit = st.date_input(
+              "Data da Venda",
+              value=datetime.datetime.strptime(
+                  str(row_atual["Data da Venda"]), "%Y-%m-%d"
+              ).date(),
+          )
+          pc_edit = st.number_input(
+              "Preço de Compra",
+              value=float(row_atual["Preço de Compra"]),
+              format="%.2f",
+          )
+          ce_edit = st.number_input(
+              "Custo de Embalagem",
+              value=float(row_atual["Custo de Embalagem"]),
+              format="%.2f",
+          )
+          pv_edit = st.number_input(
+              "Preço de Venda",
+              value=float(row_atual["Preço de Venda"]),
+              format="%.2f",
+          )
 
-          btn_atualizar = st.form_submit_button("Atualizar / Refazer Registo")
+          btn_atualizar = st.form_submit_button("Atualizar Registo")
 
           if btn_atualizar:
             fact_new = q_edit * pv_edit
@@ -307,36 +303,27 @@ with aba_venda:
             st.rerun()
 
 # ---------------------------------------------------------
-# 2. ABA: GERIR STOCK (Com Código automático e Edição de Nome)
+# 2. ABA: GERIR STOCK (Adicionar, Editar e Eliminar)
 # ---------------------------------------------------------
 with aba_stock:
-  st.subheader("📦 Gestão de Produtos e Stock")
+  st.subheader("📦 Gestão de Produtos")
 
   acao_produto = st.radio(
-      "Selecione a ação:",
-      ["Adicionar Novo Produto", "Refazer / Editar Produto Existente"],
-      horizontal=True,
+      "Operação:", ["Novo", "Editar", "Eliminar"], horizontal=True
   )
 
-  if acao_produto == "Adicionar Novo Produto":
+  if acao_produto == "Novo":
     with st.form("form_novo_produto"):
-      st.write("Adicionar Novo Produto")
-      c1, c2, c3, c4 = st.columns(4)
-      with c1:
-        n_prod = st.text_input("Nome do Produto")
-      with c2:
-        s_inic = st.number_input("Stock Inicial", min_value=0, step=1)
-      with c3:
-        p_comp = st.number_input(
-            "Preço de Compra Padrão", min_value=0.0, format="%.2f"
-        )
-      with c4:
-        p_vend = st.number_input(
-            "Preço de Venda Padrão", min_value=0.0, format="%.2f"
-        )
+      n_prod = st.text_input("Nome do Produto")
+      s_inic = st.number_input("Stock Inicial", min_value=0, step=1)
+      p_comp = st.number_input(
+          "Preço Compra Padrão", min_value=0.0, format="%.2f"
+      )
+      p_vend = st.number_input(
+          "Preço Venda Padrão", min_value=0.0, format="%.2f"
+      )
 
-      btn_prod = st.form_submit_button("Salvar Produto")
-      if btn_prod and n_prod:
+      if st.form_submit_button("Guardar Produto") and n_prod:
         proximo_id = len(df_stock) + 1
         codigo_formatado = f"{proximo_id:03d}"
 
@@ -349,79 +336,80 @@ with aba_stock:
         }])
         df_stock = pd.concat([df_stock, novo_p], ignore_index=True)
         df_stock.to_csv(STOCK_FILE, index=False)
-        st.success(
-            f"Produto '{n_prod}' adicionado com o código {codigo_formatado}!"
-        )
+        st.success(f"Produto '{n_prod}' criado com sucesso!")
         st.rerun()
 
-  else:  # Editar / Refazer Produto Existente
+  elif acao_produto == "Editar":
     if df_stock.empty:
-      st.info("Nenhum produto cadastrado para editar.")
+      st.info("Nenhum produto cadastrado.")
     else:
       produto_a_editar = st.selectbox(
-          "Selecione o produto que deseja alterar:", df_stock["Produto"]
+          "Selecione o produto:", df_stock["Produto"]
       )
       idx_prod = df_stock[df_stock["Produto"] == produto_a_editar].index[0]
       row_prod_atual = df_stock.loc[idx_prod]
 
       with st.form("form_editar_produto"):
-        st.write(
-            f"A editar o produto com Código: **{row_prod_atual['Código']}**"
+        st.write(f"Código: {row_prod_atual['Código']}")
+        novo_nome_prod = st.text_input(
+            "Nome do Produto", value=str(row_prod_atual["Produto"])
         )
-        ep1, ep2, ep3, ep4 = st.columns(4)
-        with ep1:
-          novo_nome_prod = st.text_input(
-              "Novo Nome do Produto", value=str(row_prod_atual["Produto"])
-          )
-        with ep2:
-          novo_stock = st.number_input(
-              "Stock Inicial",
-              min_value=0,
-              step=1,
-              value=int(row_prod_atual["Stock Inicial"]),
-          )
-        with ep3:
-          novo_pc_padrao = st.number_input(
-              "Preço de Compra",
-              min_value=0.0,
-              format="%.2f",
-              value=float(row_prod_atual["Preço de Compra"]),
-          )
-        with ep4:
-          novo_pv_padrao = st.number_input(
-              "Preço de Venda",
-              min_value=0.0,
-              format="%.2f",
-              value=float(row_prod_atual["Preço de Venda"]),
-          )
+        novo_stock = st.number_input(
+            "Stock Inicial",
+            min_value=0,
+            step=1,
+            value=int(row_prod_atual["Stock Inicial"]),
+        )
+        novo_pc_padrao = st.number_input(
+            "Preço de Compra",
+            min_value=0.0,
+            format="%.2f",
+            value=float(row_prod_atual["Preço de Compra"]),
+        )
+        novo_pv_padrao = st.number_input(
+            "Preço de Venda",
+            min_value=0.0,
+            format="%.2f",
+            value=float(row_prod_atual["Preço de Venda"]),
+        )
 
-        btn_atualizar_prod = st.form_submit_button("Atualizar Cadastro")
-
-        if btn_atualizar_prod:
+        if st.form_submit_button("Atualizar Produto"):
           df_stock.at[idx_prod, "Produto"] = novo_nome_prod
           df_stock.at[idx_prod, "Stock Inicial"] = novo_stock
           df_stock.at[idx_prod, "Preço de Compra"] = novo_pc_padrao
           df_stock.at[idx_prod, "Preço de Venda"] = novo_pv_padrao
 
           df_stock.to_csv(STOCK_FILE, index=False)
-          st.success("Cadastro do produto atualizado com sucesso!")
+          st.success("Produto atualizado com sucesso!")
           st.rerun()
 
+  else:  # Eliminar Produto
+    if df_stock.empty:
+      st.info("Nenhum produto cadastrado.")
+    else:
+      produto_a_apagar = st.selectbox(
+          "Selecione o produto para eliminar:", df_stock["Produto"]
+      )
+      if st.button("Eliminar Produto Definitivamente"):
+        idx_apagar = df_stock[df_stock["Produto"] == produto_a_apagar].index[0]
+        df_stock = df_stock.drop(idx_apagar).reset_index(drop=True)
+        df_stock.to_csv(STOCK_FILE, index=False)
+        st.success("Produto eliminado com sucesso!")
+        st.rerun()
+
   st.markdown("---")
-  st.write("### Produtos Cadastrados")
+  st.write("### Lista de Stock")
   if not df_stock.empty:
     st.dataframe(df_stock, use_container_width=True)
-  else:
-    st.info("Nenhum produto cadastrado.")
 
 # ---------------------------------------------------------
 # 3. ABA: HISTÓRICO DE VENDAS
 # ---------------------------------------------------------
 with aba_historico:
-  st.subheader("📋 Histórico Geral de Vendas e Lucros")
+  st.subheader("📋 Histórico")
 
   if df_vendas.empty:
-    st.info("Ainda não existem vendas registadas.")
+    st.info("Sem vendas registadas.")
   else:
     if "Descricao_Edit" in df_vendas.columns:
       df_vendas = df_vendas.drop(columns=["Descricao_Edit"])
@@ -429,17 +417,15 @@ with aba_historico:
     st.dataframe(df_vendas, use_container_width=True)
 
     st.markdown("---")
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Facturação Total", f"{df_vendas['Facturação'].sum():,.2f}")
-    m2.metric("Lucro Total", f"{df_vendas['Lucro'].sum():,.2f}")
-    m3.metric("Total de Vendas", len(df_vendas))
+    st.metric("Facturação Total", f"{df_vendas['Facturação'].sum():,.2f}")
+    st.metric("Lucro Total", f"{df_vendas['Lucro'].sum():,.2f}")
 
-    with st.expander("Apagar um registo de venda"):
+    with st.expander("Apagar registo de venda"):
       venda_apagar = st.selectbox(
-          "Selecione o registo para excluir:", df_vendas.index
+          "Selecione a venda a excluir:", df_vendas.index
       )
-      if st.button("Eliminar Registo Selecionado"):
+      if st.button("Eliminar Venda"):
         df_vendas = df_vendas.drop(venda_apagar).reset_index(drop=True)
         df_vendas.to_csv(VENDAS_FILE, index=False)
-        st.success("Registo eliminado com sucesso!")
+        st.success("Venda eliminada!")
         st.rerun()
