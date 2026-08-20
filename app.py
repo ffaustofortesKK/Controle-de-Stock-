@@ -255,7 +255,6 @@ with aba_venda:
           btn_atualizar = st.form_submit_button("Atualizar Registo")
 
           if btn_atualizar:
-            # Puxa os preços atuais atualizados do produto selecionado
             dados_prod_edit = df_stock[df_stock["Produto"] == prod_edit].iloc[0]
             pc_edit = float(dados_prod_edit["Preço de Compra"])
             pv_edit = float(dados_prod_edit["Preço de Venda"])
@@ -286,7 +285,7 @@ with aba_venda:
             st.rerun()
 
 # ---------------------------------------------------------
-# 2. ABA: GERIR STOCK (Adicionar, Editar e Eliminar)
+# 2. ABA: GERIR STOCK (Adicionar, Editar Completo e Eliminar)
 # ---------------------------------------------------------
 with aba_stock:
   st.subheader("📦 Gestão de Produtos")
@@ -327,7 +326,7 @@ with aba_stock:
       st.info("Nenhum produto cadastrado.")
     else:
       produto_a_editar = st.selectbox(
-          "Selecione o produto:", df_stock["Produto"]
+          "Selecione o produto para editar:", df_stock["Produto"]
       )
       idx_prod = df_stock[df_stock["Produto"] == produto_a_editar].index[0]
       row_prod_atual = df_stock.loc[idx_prod]
