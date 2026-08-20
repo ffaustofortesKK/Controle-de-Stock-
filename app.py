@@ -152,7 +152,7 @@ aba_venda, aba_stock, aba_historico = st.tabs(
 )
 
 # ---------------------------------------------------------
-# 1. ABA: REGISTAR VENDA (Apenas Nova Venda)
+# 1. ABA: REGISTAR VENDA (Com notificação e limpeza de campos)
 # ---------------------------------------------------------
 with aba_venda:
   st.subheader("Registo de Vendas")
@@ -160,14 +160,25 @@ with aba_venda:
   if df_stock.empty:
     st.warning("Cadastre primeiro os produtos na aba 'Stock'.")
   else:
-    with st.form("form_venda_novo"):
+    # Inicializar variáveis de estado para limpar o formulário se necessário
+    if "qtd_venda" not in st.session_state:
+      st.session_state["qtd_venda"] = 1
+    if "data_venda" not in st.session_state:
+      st.session_state["data_venda"] = datetime.date.today()
+
+    with st.form("form_venda_novo", clear_on_submit=True):
       produto_selecionado = st.selectbox(
           "Produto", df_stock["Produto"].unique()
       )
       quantidade = st.number_input(
-          "Quantidade Vendida", min_value=1, step=1, value=1
+          "Quantidade Vendida",
+          min_value=1,
+          step=1,
+          value=st.session_state["qtd_venda"],
       )
-      data_venda = st.date_input("Data da Venda", value=datetime.date.today())
+      data_venda = st.date_input(
+          "Data da Venda", value=st.session_state["data_venda"]
+      )
 
       submit = st.form_submit_button("Salvar Nova Venda")
 
@@ -198,8 +209,14 @@ with aba_venda:
 
         df_vendas = pd.concat([df_vendas, nova_linha], ignore_index=True)
         df_vendas.to_csv(VENDAS_FILE, index=False)
-        st.success("Venda registada com sucesso!")
-        st.rerun()
+
+        # Guarda flag de sucesso para mostrar fora do form
+        st.session_state["sucesso_venda"] = True
+
+    # Mensagem de notificação fora do formulário após submeter
+    if st.session_state.get("sucesso_venda", False):
+      st.success("Seu pedido foi salvo com sucesso!")
+      st.session_state["sucesso_venda"] = False
 
 # ---------------------------------------------------------
 # 2. ABA: GERIR STOCK (Novo, Nova Entrada, Editar, Eliminar)
@@ -213,7 +230,7 @@ with aba_stock:
   )
 
   if acao_produto == "Novo":
-    with st.form("form_novo_produto"):
+    with st.form("form_novo_produto", clear_on_submit=True):
       n_prod = st.text_input("Nome do Produto")
       s_inic = st.number_input("Stock Inicial", min_value=0, step=1)
       p_comp = st.number_input(
@@ -223,27 +240,30 @@ with aba_stock:
           "Preço Venda Padrão", min_value=0.0, format="%.2f"
       )
 
-      if st.form_submit_button("Guardar Produto") and n_prod:
-        proximo_id = len(df_stock) + 1
-        codigo_formatado = f"{proximo_id:03d}"
+      if st.form_submit_button("Guardar Produto"):
+        if n_prod:
+          proximo_id = len(df_stock) + 1
+          codigo_formatado = f"{proximo_id:03d}"
 
-        novo_p = pd.DataFrame([{
-            "Código": codigo_formatado,
-            "Produto": n_prod,
-            "Stock Inicial": s_inic,
-            "Preço de Compra": p_comp,
-            "Preço de Venda": p_vend,
-        }])
-        df_stock = pd.concat([df_stock, novo_p], ignore_index=True)
-        df_stock.to_csv(STOCK_FILE, index=False)
-        st.success(f"Produto '{n_prod}' criado com sucesso!")
-        st.rerun()
+          novo_p = pd.DataFrame([{
+              "Código": codigo_formatado,
+              "Produto": n_prod,
+              "Stock Inicial": s_inic,
+              "Preço de Compra": p_comp,
+              "Preço de Venda": p_vend,
+          }])
+          df_stock = pd.concat([df_stock, novo_p], ignore_index=True)
+          df_stock.to_csv(STOCK_FILE, index=False)
+          st.success(f"Produto '{n_prod}' criado com sucesso!")
+          st.rerun()
+        else:
+          st.warning("Insira o nome do produto.")
 
   elif acao_produto == "Nova Entrada":
     if df_stock.empty:
       st.info("Nenhum produto cadastrado.")
     else:
-      with st.form("form_nova_entrada"):
+      with st.form("form_nova_entrada", clear_on_submit=True):
         prod_entrada = st.selectbox(
             "Selecione o Produto para adicionar stock:", df_stock["Produto"]
         )
